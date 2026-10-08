@@ -1,94 +1,79 @@
-# simple-agent
+# StockScope AI (Stock Monitoring & Investment Intelligence Assistant)
 
-Simple ReAct agent
-Agent generated with `agents-cli` version `1.4.0`
+A conversational AI agent built with Google Agent Development Kit (ADK) that helps individual investors evaluate stock investments by monitoring watchlists, retrieving real-time quotes, analyzing historical performance & valuation metrics (P/E ratio, EPS, margins, market cap), and generating structured A2UI visual cards.
 
-## Project Structure
+## 🎥 Demo Video
 
-```
-simple-agent/
-├── app/         # Core agent code
-│   ├── agent.py               # Main agent logic
-│   ├── fast_api_app.py        # FastAPI Backend server
-│   └── app_utils/             # App utilities and helpers
-├── tests/                     # Unit, integration, and load tests
-├── GEMINI.md                  # AI-assisted development guide
-└── pyproject.toml             # Project dependencies
-```
-
-> 💡 **Tip:** Use [Antigravity CLI](https://antigravity.google/) for AI-assisted development - project context is pre-configured in `GEMINI.md`.
-
-## Requirements
-
-Before you begin, ensure you have:
-- **uv**: Python package manager (used for all dependency management in this project) - [Install](https://docs.astral.sh/uv/getting-started/installation/) ([add packages](https://docs.astral.sh/uv/concepts/dependencies/) with `uv add <package>`)
-- **agents-cli**: Agents CLI - Install with `uv tool install google-agents-cli`
-- **Google Cloud SDK**: For GCP services - [Install](https://cloud.google.com/sdk/docs/install)
-
-
-## Quick Start
-
-Install `agents-cli` and its skills if not already installed:
-
-```bash
-uvx google-agents-cli setup
-```
-
-Install required packages:
-
-```bash
-agents-cli install
-```
-
-Test the agent with a local web server:
-
-```bash
-agents-cli playground
-```
-
-You can also use features from the [ADK](https://adk.dev/) CLI with `uv run adk`.
-
-## Commands
-
-| Command              | Description                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------- |
-| `agents-cli install` | Install dependencies using uv                                                         |
-| `agents-cli playground` | Launch local development environment                                                  |
-| `agents-cli lint`    | Run code quality checks                                                               |
-| `agents-cli eval`    | Evaluate agent behavior (generate, grade, analyze, and more — see `agents-cli eval --help`) |
-| `uv run pytest tests/unit tests/integration` | Run unit and integration tests                                                        |
-| `agents-cli deploy`  | Deploy agent to Agent Runtime                                                                |
-| `agents-cli publish gemini-enterprise` | Register deployed agent to Gemini Enterprise                    || [A2A Inspector](https://github.com/a2aproject/a2a-inspector) | Launch A2A Protocol Inspector                                                        |
-
-## 🛠️ Project Management
-
-| Command | What It Does |
-|---------|--------------|
-| `agents-cli scaffold enhance` | Add CI/CD pipelines and Terraform infrastructure |
-| `agents-cli infra cicd` | One-command setup of entire CI/CD pipeline + infrastructure |
-| `agents-cli scaffold upgrade` | Auto-upgrade to latest version while preserving customizations |
+> Demo video: [`assets/nvda_1066c49d.mp4`](assets/nvda_1066c49d.mp4)
 
 ---
 
-## Development
+## 🌟 Key Features & Tools
 
-Edit your agent logic in `app/agent.py` and test with `agents-cli playground` - it auto-reloads on save.
+- **Real-Time Live Stock Quotes**: Integrates public market endpoints (Finnhub API / Yahoo Finance) via `fetch_live_stock_quote` to fetch live stock prices, percentage change, and 52-week ranges.
+- **Stock Fundamentals & Valuation**: Retrieval of key investment metrics including P/E ratios, EPS, debt-to-equity, and profit margins.
+- **Historical Performance Analysis**: `fetch_market_history` inspects multi-period price history and movement trends.
+- **Persistent Long-Term Memory**: Vertex AI Memory Bank and Firestore integration remember user watchlists, portfolio preferences, and investment goals across sessions.
+- **Rich A2UI Visual Cards**: Formats stock summaries, watchlist snapshots, and financial metrics as structured A2UI cards.
 
-## Deployment
+---
 
-```bash
-gcloud config set project <your-project-id>
-agents-cli deploy
+## 🏗️ Project Structure
+
+```
+stockscope-agent/
+├── app/
+│   ├── agent.py                 # Core ADK agent definition & tools
+│   ├── fast_api_app.py          # FastAPI backend server with A2A protocol
+│   ├── prompt.py                # A2UI-optimized system prompt
+│   ├── a2ui_utils.py            # A2UI message wrapper callback
+│   └── app_utils/               # Services, memory, and A2A handlers
+├── assets/
+│   └── nvda_1066c49d.mp4        # Agent demonstration video
+├── frontend/                    # Web chat interface
+├── tests/                       # Unit & integration test suites
+├── project_brief.md             # Project design and tool coverage brief
+├── agents-cli-manifest.yaml     # Agent deployment specification
+└── pyproject.toml               # Python project configuration & dependencies
 ```
 
-To add CI/CD and Terraform, run `agents-cli scaffold enhance`.
-To set up your production infrastructure, run `agents-cli infra cicd`.
+---
 
-## Observability
+## 🚀 Getting Started
 
-Built-in telemetry exports to Cloud Trace, BigQuery, and Cloud Logging.
+### Prerequisites
 
-## A2A Inspector
+- Python 3.11 - 3.13
+- [uv](https://docs.astral.sh/uv/) package manager
+- Google Cloud SDK (`gcloud`)
 
-This agent supports the [A2A Protocol](https://a2a-protocol.org/). Use the [A2A Inspector](https://github.com/a2aproject/a2a-inspector) to test interoperability.
-See the [A2A Inspector docs](https://github.com/a2aproject/a2a-inspector) for details.
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/jameslin14/buildwithgemini-stockscope-agent.git
+cd buildwithgemini-stockscope-agent
+
+# Install dependencies
+uv sync
+```
+
+### Running Locally
+
+Launch the ADK Web playground:
+
+```bash
+uv run adk web --port 8080 --allow_origins "*" --reload_agents
+```
+
+Open `http://localhost:8080` in your browser. (Turn off Token Streaming in the UI settings for optimal A2UI card rendering.)
+
+---
+
+## ☁️ Deployment
+
+Deploy to Vertex AI Agent Runtime:
+
+```bash
+agents-cli deploy --region us-east1
+```

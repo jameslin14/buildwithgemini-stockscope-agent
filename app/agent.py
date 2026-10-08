@@ -13,16 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import datetime
 from typing import Any, Dict, List, Optional
+import uuid
 from zoneinfo import ZoneInfo
 
+from google import genai
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.apps import App
 from google.adk.models import Gemini
+from google.adk.tools import ToolContext
 from google.adk.tools.preload_memory_tool import PreloadMemoryTool
-from google.cloud import firestore
+from google.cloud import firestore, storage
 from google.genai import types
 
 from .a2ui_utils import a2ui_callback
@@ -31,10 +35,15 @@ from .prompt import INSTRUCTION
 
 MODEL = "gemini-3.8-flash"
 FIRESTORE_PROJECT_ID = "qwiklabs-gcp-03-c7f7b6dbf6e7"
+PUBLIC_BUCKET_NAME = "stockscope-assets-qwiklabs-gcp-03-c7f7b6dbf6e7"
 
 # Initialize Firestore client with explicit project ID string
 db = firestore.Client(project=FIRESTORE_PROJECT_ID)
 stocks_collection = db.collection("stocks")
+
+# Initialize Storage client with explicit project ID string
+storage_client = storage.Client(project=FIRESTORE_PROJECT_ID)
+public_bucket = storage_client.bucket(PUBLIC_BUCKET_NAME)
 
 
 def get_stock(ticker: str) -> Dict[str, Any]:
@@ -356,6 +365,70 @@ def fetch_live_stock_quote(ticker: str) -> Dict[str, Any]:
         return {"error": f"Failed to retrieve live quote for {clean_ticker}: {str(e)}"}
 
 
+def generate_stock_video(
+    ticker: str,
+    scene_description: str,
+    tool_context: ToolContext,
+) -> Dict[str, Any]:
+    """Generate a short cinematic 3D video for a stock or financial market topic using Gemini Omni Flash.
+
+    Args:
+        ticker: The stock ticker symbol (e.g. NVDA, AAPL, GOOGL, TSLA).
+        scene_description: A description of the visual scene to generate (e.g. 'high-tech AI chip glowing with neon circuits and market data streams', 'futuristic electric vehicle driving through a glowing holographic financial city').
+        tool_context: ADK ToolContext used to save the generated video artifact for the Playground UI.
+
+    Returns:
+        A dictionary with the video public URL, artifact filename, and status.
+    """
+    clean_ticker = ticker.strip().upper()
+    prompt = (
+        f"A cinematic high-quality short 3D animation for stock ticker {clean_ticker}: "
+        f"{scene_description}. High production value, smooth camera motion, professional lighting, financial technology theme."
+    )
+
+    try:
+        # Use Google GenAI Client with Vertex AI in the global region
+        omni_client = genai.Client(
+            vertexai=True,
+            project=FIRESTORE_PROJECT_ID,
+            location="global",
+        )
+        interaction = omni_client.interactions.create(
+            model="gemini-omni-flash-preview",
+            input=prompt,
+        )
+
+        output_video = getattr(interaction, "output_video", None)
+        if not output_video or not getattr(output_video, "data", None):
+            return {
+                "error": "Failed to generate video: No video output received from Omni model.",
+            }
+
+        # Decode base64 video bytes
+        video_bytes = base64.b64decode(output_video.data)
+        object_name = f"videos/{clean_ticker.lower()}_{uuid.uuid4().hex[:8]}.mp4"
+        filename = f"{clean_ticker.lower()}_overview.mp4"
+
+        # 1. Save as artifact in tool_context so it appears in Playground Artifacts panel
+        part = types.Part.from_bytes(data=video_bytes, mime_type="video/mp4")
+        tool_context.save_artifact(filename=filename, artifact=part)
+
+        # 2. Upload video bytes to the public Cloud Storage bucket
+        blob = public_bucket.blob(object_name)
+        blob.upload_from_string(video_bytes, content_type="video/mp4")
+
+        public_url = f"https://storage.googleapis.com/{PUBLIC_BUCKET_NAME}/{object_name}"
+        return {
+            "status": "success",
+            "ticker": clean_ticker,
+            "filename": filename,
+            "public_url": public_url,
+            "message": f"Generated short video for {clean_ticker}. Saved artifact as '{filename}' and uploaded to public Cloud Storage.",
+        }
+    except Exception as e:
+        return {"error": f"Failed to generate video for {clean_ticker}: {str(e)}"}
+
+
 async def generate_memories_callback(callback_context: CallbackContext):
     """Save user preferences and facts to Memory Bank across sessions."""
     try:
@@ -382,6 +455,7 @@ root_agent = Agent(
         save_stock,
         calculate_valuation_metrics,
         fetch_market_history,
+        generate_stock_video,
     ],
     after_model_callback=a2ui_callback,
     after_agent_callback=generate_memories_callback,
@@ -391,5 +465,6 @@ app = App(
     root_agent=root_agent,
     name="app",
 )
+
 
 
